@@ -1,3 +1,4 @@
+'''function to find fibonacci of a number'''
 def fibonacci(i):
     if i == 0: return 0
     elif i == 1: return 1
