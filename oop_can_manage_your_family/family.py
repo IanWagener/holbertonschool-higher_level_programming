@@ -1,38 +1,65 @@
-from sys import argv
-from datetime import date
 import json
+import os
+
+def save_to_file(list, filename):
+    json_data = []
+    for x in list:
+        hash = x.json()
+        json_data.append(hash)
+    with open(filename, 'w') as outfile:
+        json.dump(json_data, outfile)
+
+def load_from_file(filename):
+    if type(filename) != str or os.path.isfile(filename) != True:
+        raise Exception("filename is not valid or doesn't exist")
+    with open(filename) as data_file:
+        json_data = json.load(data_file)
+    # initilize list
+    list = []
+    for x in json_data:
+        if x['kind'] == "Baby":
+            # initialize Baby object
+            person = Baby(1, "foo", [1,01,0000], "Female", "Blue")
+        elif x['kind'] == "Teenager":
+            # initialize Teenager object
+            person = Teenager(1, "foo", [1,01,0000], "Female", "Blue")
+        elif x['kind'] == "Adult":
+            # initialize Adult object
+            person = Adult(1, "foo", [1,01,0000], "Female", "Blue")
+        else:
+            # initialize Senior object
+            person = Senior(1, "foo", [1,01,0000], "Female", "Blue")
+        # set attributes for object from hash
+        person.load_from_json(x)
+        list.append(person)
+    return list
+
 class Person():
     EYES_COLORS = ["Blue", "Green", "Brown"]
     GENRES = ["Female", "Male"]
-    ''' Public Method '''
     def __init__(self, id, first_name, date_of_birth, genre, eyes_color):
-        ''' Private '''
-        if id < 0 and isinstance(id, int):
+        if type(id) != int or id < 0:
             raise Exception("id is not an integer")
-        self.__id = id
-
-        if eyes_color not in Person.EYES_COLORS:
-            raise Exception("eyes_color is not valid")
-        self.__eyes_color = eyes_color
-
+        if type(first_name) != str or len(first_name) == 0:
+            raise Exception("string is not a string")
+        if type(date_of_birth) == str or len(date_of_birth) != 3:
+            raise Exception("date_of_birth is not a valid date")
+        if date_of_birth[0] not in range(1, 13):
+            raise Exception("date_of_birth is not a valid date")
+        if date_of_birth[1] not in range(1, 32):
+            raise Exception("date_of_birth is not a valid date")
+        if type(date_of_birth[2]) != int:
+            raise Exception("date_of_birth is not a valid date")
         if genre not in Person.GENRES:
             raise Exception("genre is not valid")
-        self.__genre = genre
-        # Checks for the lenght of the list date_of_birth and its values to see if they are ints
-        if len(date_of_birth) is 3 and all(isinstance (n, int) for n in date_of_birth):
-            self.__date_of_birth = date_of_birth
-        else:
-            raise Exception("date_of_birth is not a valid date")
-
-        if first_name is " " and isinstance(first_name, str):
-            raise Exception("string is not a string")
+        if eyes_color not in Person.EYES_COLORS:
+            raise Exception("eyes_color is not valid")
+        self.__id = id
         self.__first_name = first_name
+        self.__date_of_birth = date_of_birth
+        self.__genre = genre
+        self.__eyes_color = eyes_color
 
-        ''' Public '''
-        self.last_name = " "
-        self.is_married_to = 0
-
-    ''' Getters '''
     def get_id(self):
         return self.__id
 
@@ -48,201 +75,179 @@ class Person():
     def get_first_name(self):
         return self.__first_name
 
-    #Returns a string that has the name and last name of the person concatenated
     def __str__(self):
-         return "%s %s" %(self.__first_name , self.last_name)
+        return self.__first_name + " " + self.last_name
+
+    def __gt__(self, other):
+        return Person.age(self) > Person.age(other)
+
+    def __lt__(self, other):
+        return Person.age(self) < Person.age(other)
+
+    def __ge__(self, other):
+        return Person.age(self) >= Person.age(other)
+
+    def __le__(self, other):
+        return Person.age(self) <= Person.age(other)
+
+    def __eq__(self, other):
+        return Person.age(self) == Person.age(other)
+
+    def __ne__(self, other):
+        return Person.age(self) != Person.age(other)
 
     def is_male(self):
-        if self.__genre is "Male":
+        if self.__genre == "Male":
+            return True
+
+    def age(self):
+        years = 2016 - self.__date_of_birth[2]
+        if self.__date_of_birth[0] > 5:
+            return years - 1
+        if self.__date_of_birth[0] == 5 and self.__date_of_birth[1] <= 20:
+                return years - 1
+        else:
+            return years
+
+    def is_married(self):
+        if self.is_married_to != 0:
             return True
         else:
             return False
 
-    def age(self):
-        today = date.today()
-        age = today.year - self.__date_of_birth[2] - ( (today.month, today.day) < (self.__date_of_birth[1], self.__date_of_birth[0]))
-        return age
-    def __gt__(self,other):
-        return (self.age() > other.age())
-    def __eq__(self, other):
-        return(self.age() == other.age())
-    def __ne__(self, other):
-        return (self.age() != other.age())
-    def __ge__(self, other):
-        return (self.age >= other.age())
-    def __lt__(self, other):
-        return (self.age < other.age())
-    def __le__(self, other):
-        return (self.age <= other.age())
+    def divorce(self, p):
+        self.is_married_to = 0
+        p.is_married_to = 0
 
-    ''' Creating a diccionary '''
+    def just_married_with(self, p):
+        if self.is_married() == True or p.is_married() == True:
+            raise Exception("Already married")
+        if self.can_be_married() == False or p.can_be_married() == False:
+            raise Exception("Can't be married")
+        self.is_married_to = p.__id
+        p.is_married_to = self.__id
+        if self.__genre == "Female" and p.__genre == "Male":
+            self.last_name = p.last_name
+        elif self.genre == "Male" and p.__genre == "Female":
+            p.last_name = self.last_name
+
+    def has_child_with(self, p, id, first_name, date_of_birth, genre, eyes_color):
+        if p is None or (p.__class__.__name__ != 'Adult' and p.__class__.__name__ != 'Senior'):
+            raise Exception("p is not an Adult or Senior")
+        if self.can_have_child == False or p.can_have_child == False: # check for p seems redundant
+            raise Exception("Can't have baby")
+        if id < 0 or type(id) != int:
+            raise Exception("id is not an integer")
+        if first_name == "" or type(first_name) != str:
+            raise Exception("string is not a string")
+        if type(date_of_birth) != list:
+            raise Exception("date_of_birth is not a valid date")
+        for x in date_of_birth:
+            if type(x) != int:
+                raise Exception("date_of_birth is not a valid date")
+        if type(genre) != str or genre not in Person.GENRES:
+            raise Exception("genre is not valid")
+        if type(eyes_color) != str or eyes_color not in Person.EYES_COLORS:
+            raise Exception("eyes_color is not valid")
+        self.children.append(id)
+        p.children.append(id)
+        return Baby(id, first_name, date_of_birth, genre, eyes_color)
+
+    def adopt_child(self, c):
+        if self.can_have_child == False:
+            raise Exception("Can't adopt child")
+        self.children.append(c.get_id())
+
     def json(self):
-        dicc ={
-        'id':self.__id,
-        'eyes_color':self.__eyes_color,
-        'genre':self.__genre,
-        'date_of_birth':self.__date_of_birth,
-        'first_name':self.__first_name,
-        'last_name':self.last_name,
-        'is_married_to':self.is_married_to
-        }
-        return dicc
+        return {'id': self.__id, 'eyes_color': self.__eyes_color, 'genre': self.__genre, 'date_of_birth': self.__date_of_birth, 'first_name': self.__first_name, 'last_name': self.last_name}
 
-    ''' loading json'''
     def load_from_json(self, json):
-    #    if json is not dict:
-    #        raise Exception("json is not valid")
+        if type(json) != hash:
+            raise Exception("json is not valid")
+
         self.__id = json['id']
         self.__eyes_color = json['eyes_color']
         self.__genre = json['genre']
         self.__date_of_birth = json['date_of_birth']
         self.__first_name = json['first_name']
-        self.last_name = json['last_name']
-        self.is_married_to = json['is_married_to']
-
-
-def save_to_file(list, filename):
-    with open(filename, 'w') as outfile:
-        list_of_json_strings = []
-        for i in list:
-            list_of_json_strings.append(i.json())
-        outfile.write(json.dumps(list_of_json_strings,indent = 2))
-
-    #except:
-    ##    pass
-
-def load_from_file(filename):
-    data = []
-    p = Person(1, "Julien", [12, 24, 1980], "Male", "Blue")
-    with open(filename, 'r') as data_file:
-        a = json.load(data_file)
-        #print a
-        for line in a:
-            p.load_from_json(line)
-            data.append(p)
-        return data
-
+        self.__last_name = json['last_name']
+        self.__is_married_to = json['is_married_to']
 
 class Baby(Person):
-    ''' '''
-    def __init__(self, id, first_name, date_of_birth, genre, eyes_color):
-        Person.__init__(self, id, first_name, date_of_birth, genre, eyes_color)
     def can_run(self):
         return False
+
     def need_help(self):
         return True
+
     def is_young(self):
         return True
+
     def can_vote(self):
         return False
-    '''Begining of the marriage methods'''
+
     def can_be_married(self):
         return False
-    def is_married(self):
-        if self.is_married_to is not 0:
-            return True
-        else:
-            return False
-    def divorce(self, p):
+
+    def can_have_child(self):
         return False
-    def just_married_with(self, p):
-        return False
+
+
 class Teenager(Person):
-    ''' '''
-    def __init__(self, id, first_name, date_of_birth, genre, eyes_color):
-        Person.__init__(self, id, first_name, date_of_birth, genre, eyes_color)
     def can_run(self):
         return True
+
     def need_help(self):
         return False
+
     def is_young(self):
         return True
+
     def can_vote(self):
         return False
-    '''Begining of the marriage methods'''
-    #returns true if is adult or senior
+
     def can_be_married(self):
         return False
-    #returns false if is_married_to = 0
-    def is_married(self, p):
-        if self.is_married_to is not 0:
-            return True
-        else:
-            return False
-    def divorce(self, p):
+
+    def can_have_child(self):
         return False
-    def just_married_with(self, p):
-        return False
+
+
 class Adult(Person):
-    def __init__(self, id, first_name, date_of_birth, genre, eyes_color):
-        Person.__init__(self, id, first_name, date_of_birth, genre, eyes_color)
     def can_run(self):
         return True
+
     def need_help(self):
         return False
+
     def is_young(self):
         return False
+
     def can_vote(self):
         return True
-    '''Begining of the marriage methods'''
-    #returns true if is adult or senior
+
     def can_be_married(self):
         return True
-    #returns false if is_married_to = 0
-    def is_married(self):
-        if self.is_married_to is not 0:
-            return True
-        else:
-            return False
-    #will unlink 2 persons => assign is_married_to of each person to 0. Don't change the last_name, it's too late!
-    def divorce(self, p):
-        ''''''
-        self.is_married_to = 0
-        p.is_married_to = 0
 
-    def just_married_with(self, p):
-        ''''''
-        self.is_married_to = p.__id
+    def can_have_child(self):
+        return True
+
+
 class Senior(Person):
-    def __init__(self, id, first_name, date_of_birth, genre, eyes_color):
-        Person.__init__(self, id, first_name, date_of_birth, genre, eyes_color)
     def can_run(self):
         return False
+
     def need_help(self):
         return True
+
     def is_young(self):
         return False
+
     def can_vote(self):
         return True
+
     def can_be_married(self):
         return True
-    '''Begining of the marriage methods'''
-    def is_married(self):
-        if self.is_married_to is not 0:
-            return True
-        else:
-            return False
-    def divorce(self, p):
-        ''''''
-        self.is_married_to = 0
-        p.is_married_to = 0
-    def just_married_with(self, p):
-        ''''''
-        self.is_married_to = p.__id
 
-def save_to_file(list, filename):
-    with open(filename, 'w') as outfile:
-        list_of_json_strings = []
-        for i in list:
-            list_of_json_strings.append(i.json())
-        outfile.write(json.dumps(list_of_json_strings,indent = 2))
-
-def load_from_file(filename):
-    data = []
-    p = Person(1, "Julien", [12, 24, 1980], "Male", "Blue")
-    with open(filename, 'r') as data_file:
-        a = json.load(data_file)
-        for line in a:
-            p.load_from_json(line)
-            data.append(p)
-        return data
+    def can_have_child(self):
+        return False
