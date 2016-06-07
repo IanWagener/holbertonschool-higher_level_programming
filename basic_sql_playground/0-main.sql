@@ -1,1 +1,1 @@
-SELECT * FROM Person;
+.schema
